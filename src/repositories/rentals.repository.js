@@ -4,8 +4,9 @@ async function findAllRentals() {
     const query = `
     SELECT 
       r.*, 
-      c.id AS "customerId", c.name AS "customerName",
-      g.id AS "gameId", g.name AS "gameName", g."pricePerDay"
+      c.name AS "customerName",
+      g.name AS "gameName", 
+      g."pricePerDay"
     FROM rentals r
     JOIN customers c ON r."customerId" = c.id
     JOIN games g ON r."gameId" = g.id;
@@ -24,7 +25,6 @@ async function countOpenRentalsByGameId(gameId) {
     return parseInt(result.rows[0].count);
 }
 
-
 async function insertRental(customerId, gameId, rentDate, daysRented, originalPrice) {
     const query = `
     INSERT INTO rentals ("customerId", "gameId", "rentDate", "daysRented", "originalPrice") 
@@ -33,23 +33,30 @@ async function insertRental(customerId, gameId, rentDate, daysRented, originalPr
     await db.query(query, [customerId, gameId, rentDate, daysRented, originalPrice]);
 }
 
-
-async function findRentalById(id) {
-    const query = 'SELECT * FROM rentals WHERE id = $1;';
+async function findRentalDetailsById(id) {
+    const query = `
+        SELECT 
+            r.*,
+            g."pricePerDay"
+        FROM 
+            rentals r
+        JOIN 
+            games g ON r."gameId" = g.id
+        WHERE 
+            r.id = $1;
+    `;
     const result = await db.query(query, [id]);
     return result.rows[0];
 }
 
-
-async function updateRentalReturn(id, returnDate, delayFee) {
+async function closeRental(id, returnDate, delayFee) {
     const query = `
-    UPDATE rentals 
-    SET "returnDate" = $1, "delayFee" = $2 
-    WHERE id = $3;
-  `;
+        UPDATE rentals 
+        SET "returnDate" = $1, "delayFee" = $2 
+        WHERE id = $3;
+    `;
     await db.query(query, [returnDate, delayFee, id]);
 }
-
 
 async function deleteRental(id) {
     const query = 'DELETE FROM rentals WHERE id = $1;';
@@ -60,7 +67,7 @@ module.exports = {
     findAllRentals,
     countOpenRentalsByGameId,
     insertRental,
-    findRentalById,
-    updateRentalReturn,
+    findRentalDetailsById,
+    closeRental,
     deleteRental
 };

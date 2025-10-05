@@ -4,9 +4,9 @@ const rentalsController = require('../controllers/rentals.controller');
 
 router.get('/', rentalsController.getRentals);
 
-router.post('/', rentalsController.postRental);
+router.post('/return/:id', rentalsController.postRentalReturn);
 
-router.post('/:id/return', rentalsController.postRentalReturn);
+router.post('/', rentalsController.postRental);
 
 router.delete('/:id', rentalsController.deleteRental);
 

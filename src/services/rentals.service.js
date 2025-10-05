@@ -1,3 +1,4 @@
+
 const rentalsRepository = require('../repositories/rentals.repository');
 const gamesRepository = require('../repositories/games.repository');
 const customersRepository = require('../repositories/customers.repository');
@@ -8,6 +9,8 @@ const {
 } = require('../errors/customErrors');
 
 const dayjs = require('dayjs');
+
+
 
 function formatRental(rental) {
     return {
@@ -26,20 +29,24 @@ function formatRental(rental) {
         game: {
             id: rental.gameId,
             name: rental.gameName,
+            pricePerDay: rental.pricePerDay || undefined,
         },
     };
 }
+
+
 
 async function listRentals() {
     const rentals = await rentalsRepository.findAllRentals();
     return rentals.map(formatRental);
 }
 
+
 async function createRental({ customerId, gameId, daysRented }) {
     const customer = await customersRepository.findCustomerById(customerId);
     if (!customer) throw notFoundError('Cliente não encontrado.');
 
-    const game = await gamesRepository.findGameById(gameId); // Assumindo que você criou findGameById
+    const game = await gamesRepository.findGameById(gameId);
     if (!game) throw notFoundError('Jogo não encontrado.');
 
     const openRentals = await rentalsRepository.countOpenRentalsByGameId(gameId);
@@ -53,8 +60,10 @@ async function createRental({ customerId, gameId, daysRented }) {
     await rentalsRepository.insertRental(customerId, gameId, rentDate, daysRented, originalPrice);
 }
 
+
 async function finalizeRental(id) {
-    const rental = await rentalsRepository.findRentalById(id);
+
+    const rental = await rentalsRepository.findRentalDetailsById(id);
 
     if (!rental) throw notFoundError('Aluguel não encontrado.');
 
@@ -62,24 +71,28 @@ async function finalizeRental(id) {
         throw unprocessableEntityError('Aluguel já finalizado.');
     }
 
-    const returnDate = dayjs();
+
+    const actualReturnDate = dayjs();
     const dueDate = dayjs(rental.rentDate).add(rental.daysRented, 'day');
 
     let delayFee = 0;
 
-    if (returnDate.isAfter(dueDate, 'day')) {
-        const game = await gamesRepository.findGameById(rental.gameId);
-        const pricePerDay = game.pricePerDay;
+    if (actualReturnDate.isAfter(dueDate, 'day')) {
 
-        const daysDelayed = returnDate.diff(dueDate, 'day');
+
+        const daysDelayed = actualReturnDate.diff(dueDate, 'day');
+
+        const pricePerDay = rental.pricePerDay;
+
         delayFee = daysDelayed * pricePerDay;
     }
 
-    await rentalsRepository.updateRentalReturn(id, returnDate.format('YYYY-MM-DD'), delayFee);
+    await rentalsRepository.closeRental(id, actualReturnDate.format('YYYY-MM-DD'), delayFee);
 }
 
+
 async function removeRental(id) {
-    const rental = await rentalsRepository.findRentalById(id);
+    const rental = await rentalsRepository.findRentalDetailsById(id);
 
     if (!rental) throw notFoundError('Aluguel não encontrado.');
 
